@@ -7,6 +7,8 @@ data <- openxlsx::read.xlsx("data/parks.xlsx")
 
 # Logos
 logo_url <- list.files("logos", full.names = T)
+
+# Split coordinate column
 data <- data %>%
   tidyr::separate(Coordinates, c('Lat', 'Long'), sep = ", ") %>%
   mutate(
@@ -16,12 +18,7 @@ data <- data %>%
 ```
 
 
-```{r}
-progress <- (data %>% filter(Visit == "Joo") %>% nrow /
-  nrow(data)) %>% scales::percent(., suffix = " %")
-```
-
-**Tilanne:** `r progress` kansallispuistoista käyty! 
+**Tilanne:** `r (data %>% filter(Visit == "Joo") %>% nrow / nrow(data)) %>% scales::percent(., suffix = " %")` puistoista käyty (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)`)! 
 
 ### Kartta
 
