@@ -21,10 +21,10 @@ progress <- (data %>% filter(Visit == "Joo") %>% nrow /
   nrow(data)) %>% scales::percent(., suffix = " %")
 ```
 
+**Tilanne:** `r progress` kansallispuistoista käyty! 
 
 ### Kartta
 
-**Tilanne:** `r progress` kansallispuistoista käyty! Käydyt puistot merkitty logolla ja käymättömät kysymysmerkillä. 
 
 ```{r}
 # Visited icons
@@ -59,9 +59,10 @@ data %>%
   )
 ```
 
+Käydyt puistot merkitty logolla ja käymättömät kysymysmerkillä. 
 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 data %>% select(
   Kansallispuisto = Park_short, Maakunta = Region, Kunta = Municipality,
   `Kävijöitä (2023)` = Visitors_2023, `Pinta-ala` = Area
@@ -74,7 +75,9 @@ data %>% select(
 
 ### Lähteet
 
-Kartta on tehty käyttäen R-paketteja `sp` ja `leaflet`. Koordinaatit osoitteesta: kartta.com/muut-kartat/suomen-kansallispuistot/.
+Kartta on tehty käyttäen R-paketteja `sp` ja `leaflet`.
+
+Koordinaatit osoitteesta: kartta.com/muut-kartat/suomen-kansallispuistot/.
 
 
 
