@@ -1,47 +1,44 @@
-
-Here are the Finnish national parks I have visited :)
-
-Coordinates were imported from kartta.com/muut-kartat/suomen-kansallispuistot/.
-
 ```{r}
-pacman::p_load(tidyverse)
-```
+# Packages
+pacman::p_load(tidyverse, sp, leaflet)
 
+# Get data
+data <- openxlsx::read.xlsx("data/parks.xlsx")
 
-
-```{r}
-data <- openxlsx::read.xlsx("data/parks.xlsx") %>%
-  tidyr::separate(Coordinates, c('Lat', 'Long'), sep = ", ") %>%
-  mutate(Lat = as.numeric(Lat), Long = as.numeric(Long))
-```
-
-
-Awesome icons
-https://rstudio.github.io/leaflet/reference/awesomeIcons.html
-
-```{r}
-pacman::p_load(sp, leaflet)
-
-# Icon colors
+# Logos
+logo_url <- list.files("logos", full.names = T)
 data <- data %>%
+  tidyr::separate(Coordinates, c('Lat', 'Long'), sep = ", ") %>%
   mutate(
-    Color = case_when(
-      Visit == "Joo" ~ "green",
-      TRUE ~ "gray50"
-    )
+    Lat = as.numeric(Lat), Long = as.numeric(Long),
+    Logo_url = logo_url
   )
+```
 
-# Icons
-icons <- awesomeIcons(
-  # icon = 'pin',
-  iconColor = data$Color,
-  library = 'ion',
-  markerColor = data$Color
+
+```{r}
+progress <- (data %>% filter(Visit == "Joo") %>% nrow /
+  nrow(data)) %>% scales::percent(., suffix = " %")
+```
+
+
+### Kartta
+
+**Tilanne:** `r progress` kansallispuistoista käyty! Käydyt puistot merkitty logolla ja käymättömät kysymysmerkillä. 
+
+```{r}
+# Visited icons
+visited <- data %>% filter(Visit == "Joo")
+visited_icons <- icons(
+  iconUrl = visited$Logo_url,
+  iconWidth = 40, iconHeight = 30,
+  iconAnchorX = 0, iconAnchorY = 0
 )
 
-# National park logos
-Icons <- icons(
-  iconUrl = list.files(path = "logos", full.names = T),
+# Not yet
+notyet <- data %>% filter(Visit != "Joo")
+notyet_icons <- icons(
+  iconUrl = "help-circle.svg",
   iconWidth = 30, iconHeight = 30,
   iconAnchorX = 0, iconAnchorY = 0
 )
@@ -50,53 +47,34 @@ Icons <- icons(
 data %>%
   leaflet() %>%
   addTiles() %>%
-  addAwesomeMarkers(
-    icon = icons,
-    label = data$Park_short,
-    lng = data$Long, lat = data$Lat,
-    options = popupOptions(closeButton = FALSE),
-    labelOptions = labelOptions(
-      noHide = TRUE, textOnly = TRUE,
-      direction = "bottom"
-    )
+  addMarkers(
+    data = visited, ~Long, ~Lat,
+    label = visited$Park_short,
+    icon = visited_icons
+  ) %>%
+  addMarkers(
+    data = notyet, ~Long, ~Lat,
+    label = notyet$Park_short,
+    icon = notyet_icons
   )
-
-
-data %>%
-  leaflet() %>%
-  addTiles() %>%
-  addAwesomeMarkers(
-    icon = icons,
-    label = data$Park_short,
-    lng = data$Long, lat = data$Lat,
-    options = popupOptions(closeButton = FALSE),
-    labelOptions = labelOptions(
-      noHide = TRUE, textOnly = TRUE,
-      direction = "bottom"
-    )
-  ) %>%
-  addMarkers(~Long, ~Lat, icon = Icons)
-
-
-data %>%
-  leaflet() %>%
-  addTiles() %>%
-  addAwesomeMarkers(
-    icon = icons,
-    label = data$Park_short,
-    lng = data$Long, lat = data$Lat,
-    options = popupOptions(closeButton = FALSE),
-    labelOptions = labelOptions(
-      noHide = TRUE, textOnly = TRUE,
-      direction = "bottom"
-    )
-  ) %>%
-  addMarkers(~Long, ~Lat, icon = Icons)
-
 ```
 
 
 
+```{r}
+data %>% select(
+  Kansallispuisto = Park_short, Maakunta = Region, Kunta = Municipality,
+  `Kävijöitä (2023)` = Visitors_2023, `Pinta-ala` = Area
+) %>%
+  reactable::reactable(defaultPageSize = 5)
+
+
+```
+
+
+### Lähteet
+
+Kartta on tehty käyttäen R-paketteja `sp` ja `leaflet`. Koordinaatit osoitteesta: kartta.com/muut-kartat/suomen-kansallispuistot/.
 
 
 
