@@ -22,6 +22,26 @@ data <- data %>%
 
 ### Kartta
 
+```{r include=FALSE}
+# GPX files
+# https://medium.com/@mark.reuter/parsing-gps-gpx-files-with-r-21ea0a694da8
+routes <- list.files("data/gpx", recursive = T, full.names = T)
+
+gpx <- list()
+for (i in 1:length(routes)) {
+  cat(paste0(routes[i], "  "))
+  gpx[[i]] <- xml2::read_html(routes[i]) %>% # Parse
+    xml2::xml_find_all("//trkpt") %>% # The lat and long data
+    xml2::xml_attrs() %>% bind_rows() %>%
+    mutate(route = i)
+}
+
+gpxdf <- bind_rows(gpx) %>%
+  mutate(lat = as.numeric(lat), lon = as.numeric(lon))
+# head(gpxdf)
+
+```
+
 
 ```{r}
 # Visited icons
@@ -36,17 +56,17 @@ visited_icons <- icons(
 notyet <- data %>% filter(Visit != "Joo")
 notyet_icons <- icons(
   iconUrl = "help-circle.svg",
-  iconWidth = 30, iconHeight = 30,
+  iconWidth = 20, iconHeight = 20,
   iconAnchorX = 0, iconAnchorY = 0
 )
 
 # Plot
-data %>%
+basemap <- data %>%
   leaflet() %>%
   addTiles() %>%
   addMarkers(
     data = visited, ~Long, ~Lat,
-    label = visited$Park_short,
+    label = paste0(visited$Park_short, "\n", visited$Dates),
     icon = visited_icons
   ) %>%
   addMarkers(
@@ -54,6 +74,20 @@ data %>%
     label = notyet$Park_short,
     icon = notyet_icons
   )
+
+# Add gpx routes
+for (i in 1:length(routes)) {
+  basemap <- basemap %>%
+    addPolylines(
+      data = gpxdf %>% filter(route == i),
+      lat = ~lat,
+      lng = ~lon,
+      color = "#CD2626",
+      opacity = 0.8,
+      weight = 3
+    )
+}
+basemap
 ```
 
 Käydyt puistot merkitty logolla ja käymättömät kysymysmerkillä. 
