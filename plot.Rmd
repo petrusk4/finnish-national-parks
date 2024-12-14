@@ -15,10 +15,10 @@ data <- data %>%
     Lat = as.numeric(Lat), Long = as.numeric(Long),
     Logo_url = logo_url
   )
+
+# Load custom functions
+"src" |> list.files(full.names = T) |> walk(source)
 ```
-
-
-**Tilanne:** `r (data %>% filter(Visit == "Joo") %>% nrow / nrow(data)) %>% scales::percent(., suffix = " %")` puistoista käyty (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)`)! 
 
 
 ### Kartta
@@ -30,7 +30,7 @@ routes <- list.files("data/gpx", recursive = T, full.names = T)
 
 gpx <- list()
 for (i in 1:length(routes)) {
-  cat(paste0(routes[i], "  "))
+  # cat(paste0(routes[i], "  "))
   gpx[[i]] <- xml2::read_html(routes[i]) %>% # Parse
     xml2::xml_find_all("//trkpt") %>% # The lat and long data
     xml2::xml_attrs() %>% bind_rows() %>%
@@ -55,21 +55,16 @@ visited <- data %>% filter(Visit == "Joo")
 
 # Not yet
 notyet <- data %>% filter(Visit != "Joo")
-# notyet_icons <- icons(
-#   iconUrl = "help-circle.svg",
-#   iconWidth = 20, iconHeight = 20,
-#   iconAnchorX = 0, iconAnchorY = 0
-# )
+notyet_icons <- icons(
+  iconUrl = "help-circle.svg",
+  iconWidth = 20, iconHeight = 20,
+  iconAnchorX = 0, iconAnchorY = 0
+)
 
 
 # Simple pins
 visited_icons <- icons(
   iconUrl = "pin.png",
-  iconWidth = 30, iconHeight = 30,
-  iconAnchorX = 0, iconAnchorY = 0
-)
-notyet_icons <- icons(
-  iconUrl = "pin2.png",
   iconWidth = 30, iconHeight = 30,
   iconAnchorX = 0, iconAnchorY = 0
 )
@@ -109,15 +104,100 @@ for (i in 1:length(routes)) {
       data = gpxdf %>% filter(route == i),
       lat = ~lat,
       lng = ~lon,
-      color = "#008B00",
-      opacity = 0.8,
+      color = "#36648B",
+      opacity = .9,
       weight = 3
     )
 }
 basemap
 ```
 
-Käydyt puistot merkitty logolla ja käymättömät kysymysmerkillä. 
+Käydyt puistot merkitty nuppineulalla ja käymättömät kysymysmerkillä. 
+
+
+**Tilanne:** `r (data %>% filter(Visit == "Joo") %>% nrow / nrow(data)) %>% scales::percent(., suffix = " %")` puistoista käyty (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)`)! 
+
+
+```{r eval=FALSE, fig.height=1.5, fig.width=6, include=FALSE}
+# How many visited 
+data %>%
+  ggplot(aes(y = 1, fill = Visit)) +
+  geom_bar() +
+  geom_text(
+    aes(
+      x = sum(Visit == "Joo"),
+      label = paste0(" ", round((sum(Visit == "Joo") / nrow(data)) * 100, 1), " %")
+    ), color = "steelblue4", check_overlap = T, fontface = "bold", hjust = 0
+  ) +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.position = "none"
+  ) +
+  scale_fill_manual(values = rev(c("steelblue4", "snow2"))) +
+  scale_x_continuous(
+    expand = expansion(mult = c(0, .05)),
+    sec.axis = sec_axis(name = "Edistys, %", ~ . / nrow(data) * 100)
+  ) + xlab("Käytyjen puistojen lukumäärä")
+  
+  
+```
+
+
+```{r fig.width=6, fig.height=6}
+# Only novel parks (first visits)
+data_first_visits <- data %>%
+  drop_na(Dates) %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  group_by(Park) %>% reframe(Year = as.numeric(min(Year))) %>%
+  group_by(Year) %>% reframe(n = n()) %>%
+  # Fill in missing rows with 0 visits
+  complete(Year = seq(min(Year), max(Year), by = 1), fill = list(n = 0)) %>%
+  mutate(cumsum = cumsum(n))
+
+# Visits by year
+p1 <- data %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  drop_na(Year) %>%
+  ggplot(aes(x = as.numeric(Year))) +
+  geom_bar(aes(fill = "Jo aiemmin käyty")) +
+  geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(0, 3000, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 100, by = 1)) +
+  scale_fill_manual(name = "Puiston tyyppi", values = rev(c("steelblue4", "#9ACD32"))) +
+  ylab("Käydyt puistot") + xlab("Vuosi") + ggtitle("Vuosittain vieraillut puistot")
+
+# Total National park trips
+p2 <- data %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  drop_na(Year) %>%
+  group_by(Year) %>%
+  reframe(n = sum(Visit == "Joo")) %>%
+  mutate(cumsum = cumsum(n)) %>%
+  ggplot(aes(x = as.numeric(Year), y = cumsum)) +
+  geom_point(aes(color = "Kaikki"), size = 2) +
+  geom_line(aes(group = 1, color = "Kaikki"), linewidth = 1, alpha = .5) +
+  geom_point(aes(color = "Uudet"), data = data_first_visits, size = 2) +
+  geom_line(data = data_first_visits, aes(group = 1, color = "Uudet"), linewidth = 1, alpha = .5) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(0, 3000, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 100, by = 5)) +
+  scale_color_manual(name = "Puiston tyyppi", values = c("steelblue4", "#9ACD32")) +
+  ylab("Käydyt puistot") + xlab("Vuosi") + ggtitle("Kumulatiivinen summa")
+
+
+
+patchwork::wrap_plots(p1, p2, ncol = 1)
+```
+
 
 
 ```{r eval=FALSE, include=FALSE}
