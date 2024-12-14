@@ -18,13 +18,8 @@ data <- data %>%
 
 # Load custom functions
 "src" |> list.files(full.names = T) |> walk(source)
-```
 
-
-### Kartta
-
-```{r}
-# GPX files
+# .gpx files
 # https://medium.com/@mark.reuter/parsing-gps-gpx-files-with-r-21ea0a694da8
 routes <- list.files("data/gpx", recursive = T, full.names = T)
 
@@ -36,12 +31,14 @@ for (i in 1:length(routes)) {
     xml2::xml_attrs() %>% bind_rows() %>%
     mutate(route = i)
 }
-
 gpxdf <- bind_rows(gpx) %>%
   mutate(lat = as.numeric(lat), lon = as.numeric(lon))
-# head(gpxdf)
-
 ```
+
+
+### Kartta
+
+**Tilanne:** `r (data %>% filter(Visit == "Joo") %>% nrow / nrow(data)) %>% scales::percent(., suffix = " %")` puistoista käyty (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)`)! 
 
 
 ```{r}
@@ -104,7 +101,7 @@ for (i in 1:length(routes)) {
       data = gpxdf %>% filter(route == i),
       lat = ~lat,
       lng = ~lon,
-      color = "#36648B",
+      color = "#FF4500",
       opacity = .9,
       weight = 3
     )
@@ -115,10 +112,76 @@ basemap
 Käydyt puistot merkitty nuppineulalla ja käymättömät kysymysmerkillä. 
 
 
-**Tilanne:** `r (data %>% filter(Visit == "Joo") %>% nrow / nrow(data)) %>% scales::percent(., suffix = " %")` puistoista käyty (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)`)! 
+```{r fig.width=7, fig.height=8, fig.retina = 3}
+# Only novel parks (first visits)
+data_first_visits <- data %>%
+  drop_na(Dates) %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  group_by(Park) %>% reframe(Year = as.numeric(min(Year))) %>%
+  group_by(Year) %>% reframe(n = n()) %>%
+  # Fill in missing rows with 0 visits
+  complete(Year = seq(min(Year), max(Year), by = 1), fill = list(n = 0)) %>%
+  mutate(cumsum = cumsum(n))
+
+# Visits by year
+p1 <- data %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  mutate(Month = as.numeric(Month), Year = as.numeric(Year)) %>%
+  drop_na(Year) %>%
+  group_by(Year) %>% mutate(visit_order = row_number(Month)-.5) %>%
+  ggplot(aes(x = Year)) +
+  geom_bar(fill = "deepskyblue4") +
+  # geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
+  ggimage::geom_image(
+    aes(y = visit_order, image = Logo_url),
+    size = 0.12
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(0, 3000, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 100, by = 1)) +
+  # scale_fill_manual(name = "Puiston tyyppi", values = rev(c("steelblue4", "#9ACD32"))) +
+  ylab("Käydyt puistot") + xlab("Vuosi") + ggtitle("Vieraillut puistot vuosittain")
+
+# Total National park trips
+p2 <- data %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  drop_na(Year) %>%
+  group_by(Year) %>%
+  reframe(n = sum(Visit == "Joo")) %>%
+  mutate(cumsum = cumsum(n)) %>%
+  ggplot(aes(x = as.numeric(Year), y = cumsum)) +
+  geom_point(aes(color = "Kaikki"), size = 2) +
+  geom_line(aes(group = 1, color = "Kaikki"), linewidth = 1, alpha = .5) +
+  geom_point(aes(color = "Uudet"), data = data_first_visits, size = 2) +
+  geom_line(data = data_first_visits, aes(group = 1, color = "Uudet"), linewidth = 1, alpha = .5) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(0, 3000, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 100, by = 5)) +
+  scale_color_manual(name = "Puiston tyyppi", values = c("deepskyblue4", "olivedrab3")) +
+  ylab("Käydyt puistot") + xlab("Vuosi") + ggtitle("Kumulatiivinen summa")
 
 
-```{r eval=FALSE, fig.height=1.5, fig.width=6, include=FALSE}
+
+patchwork::wrap_plots(p1, p2, ncol = 1, heights = c(1.5, 1))
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+data %>% select(
+  Kansallispuisto = Park_short, Maakunta = Region, Kunta = Municipality,
+  `Kävijöitä (2023)` = Visitors_2023, `Pinta-ala` = Area
+) %>%
+  reactable::reactable(defaultPageSize = 5)
+
+
+
 # How many visited 
 data %>%
   ggplot(aes(y = 1, fill = Visit)) +
@@ -141,73 +204,6 @@ data %>%
     sec.axis = sec_axis(name = "Edistys, %", ~ . / nrow(data) * 100)
   ) + xlab("Käytyjen puistojen lukumäärä")
   
-  
-```
-
-
-```{r fig.width=6, fig.height=6}
-# Only novel parks (first visits)
-data_first_visits <- data %>%
-  drop_na(Dates) %>%
-  mutate(Dates = strsplit(Dates, ", ")) %>%
-  unnest(Dates) %>%
-  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
-  group_by(Park) %>% reframe(Year = as.numeric(min(Year))) %>%
-  group_by(Year) %>% reframe(n = n()) %>%
-  # Fill in missing rows with 0 visits
-  complete(Year = seq(min(Year), max(Year), by = 1), fill = list(n = 0)) %>%
-  mutate(cumsum = cumsum(n))
-
-# Visits by year
-p1 <- data %>%
-  mutate(Dates = strsplit(Dates, ", ")) %>%
-  unnest(Dates) %>%
-  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
-  drop_na(Year) %>%
-  ggplot(aes(x = as.numeric(Year))) +
-  geom_bar(aes(fill = "Jo aiemmin käyty")) +
-  geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_x_continuous(breaks = seq(0, 3000, by = 1)) +
-  scale_y_continuous(breaks = seq(0, 100, by = 1)) +
-  scale_fill_manual(name = "Puiston tyyppi", values = rev(c("steelblue4", "#9ACD32"))) +
-  ylab("Käydyt puistot") + xlab("Vuosi") + ggtitle("Vuosittain vieraillut puistot")
-
-# Total National park trips
-p2 <- data %>%
-  mutate(Dates = strsplit(Dates, ", ")) %>%
-  unnest(Dates) %>%
-  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
-  drop_na(Year) %>%
-  group_by(Year) %>%
-  reframe(n = sum(Visit == "Joo")) %>%
-  mutate(cumsum = cumsum(n)) %>%
-  ggplot(aes(x = as.numeric(Year), y = cumsum)) +
-  geom_point(aes(color = "Kaikki"), size = 2) +
-  geom_line(aes(group = 1, color = "Kaikki"), linewidth = 1, alpha = .5) +
-  geom_point(aes(color = "Uudet"), data = data_first_visits, size = 2) +
-  geom_line(data = data_first_visits, aes(group = 1, color = "Uudet"), linewidth = 1, alpha = .5) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_x_continuous(breaks = seq(0, 3000, by = 1)) +
-  scale_y_continuous(breaks = seq(0, 100, by = 5)) +
-  scale_color_manual(name = "Puiston tyyppi", values = c("steelblue4", "#9ACD32")) +
-  ylab("Käydyt puistot") + xlab("Vuosi") + ggtitle("Kumulatiivinen summa")
-
-
-
-patchwork::wrap_plots(p1, p2, ncol = 1)
-```
-
-
-
-```{r eval=FALSE, include=FALSE}
-data %>% select(
-  Kansallispuisto = Park_short, Maakunta = Region, Kunta = Municipality,
-  `Kävijöitä (2023)` = Visitors_2023, `Pinta-ala` = Area
-) %>%
-  reactable::reactable(defaultPageSize = 5)
-
-
 ```
 
 
