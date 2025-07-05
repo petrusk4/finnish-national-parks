@@ -44,11 +44,11 @@ gpxdf <- bind_rows(gpx) %>%
 ```{r}
 # Visited icons
 visited <- data %>% filter(Visit == "Joo")
-# visited_icons <- icons(
-#   iconUrl = visited$Logo_url,
-#   iconWidth = 40, iconHeight = 30,
-#   iconAnchorX = 0, iconAnchorY = 0
-# )
+visited_icons <- icons(
+  iconUrl = visited$Logo_url,
+  iconWidth = 40, iconHeight = 30,
+  iconAnchorX = 0, iconAnchorY = 0
+)
 
 # Not yet
 notyet <- data %>% filter(Visit != "Joo")
@@ -60,29 +60,17 @@ notyet_icons <- icons(
 
 
 # Simple pins
-visited_icons <- icons(
-  iconUrl = "pin.png",
-  iconWidth = 30, iconHeight = 30,
-  iconAnchorX = 0, iconAnchorY = 0
-)
+# visited_icons <- icons(
+#   iconUrl = "pin.png",
+#   iconWidth = 30, iconHeight = 30,
+#   iconAnchorX = 0, iconAnchorY = 0
+# )
 
 
 # Plot
 basemap <- data %>%
   leaflet() %>%
   addTiles() %>%
-  addMarkers(
-    data = visited, ~Long, ~Lat,
-    label = paste0(visited$Park_short, "\n", visited$Dates),
-    icon = visited_icons
-  ) %>%
-  addMarkers(
-    data = notyet, ~Long, ~Lat,
-    label = notyet$Park_short,
-    icon = notyet_icons
-  )
-    
-    
   # addMarkers(
   #   data = visited, ~Long, ~Lat,
   #   label = paste0(visited$Park_short, "\n", visited$Dates),
@@ -93,6 +81,17 @@ basemap <- data %>%
   #   label = notyet$Park_short,
   #   icon = notyet_icons
   # )
+    
+  addMarkers(
+    data = visited, ~Long, ~Lat,
+    label = paste0(visited$Park_short, "\n", visited$Dates),
+    icon = visited_icons
+  ) %>%
+  addMarkers(
+    data = notyet, ~Long, ~Lat,
+    label = notyet$Park_short,
+    icon = notyet_icons
+  )
 
 # Add gpx routes
 for (i in 1:length(routes)) {
