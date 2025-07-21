@@ -108,7 +108,7 @@ for (i in 1:length(routes)) {
 basemap
 ```
 
-Käydyt puistot merkitty nuppineulalla ja käymättömät kysymysmerkillä. 
+Käydyt puistot merkitty logolla ja käymättömät kysymysmerkillä. 
 
 
 ```{r fig.width=7, fig.height=8, fig.retina = 3}
