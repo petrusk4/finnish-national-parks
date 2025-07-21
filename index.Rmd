@@ -1,15 +1,183 @@
 ---
 title: "Kansallispuisto-rojekti :)"
 author: "Petrus"
-date: "`r Sys.Date()`"
+date: "Päivitetty `r Sys.Date()`"
 output: 
-  html_document:
-    theme: flatly
-    toc: no
-    code_folding: hide
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
 ---
 
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, sp, leaflet, flexdashboard)
 
 
-```{r child = "plot.Rmd"}
+# Get data
+data <- openxlsx::read.xlsx("data/parks.xlsx")
+
+# Logos
+logo_url <- list.files("logos", full.names = T)
+
+# Split coordinate column
+data <- data %>%
+  tidyr::separate(Coordinates, c('Lat', 'Long'), sep = ", ") %>%
+  mutate(
+    Lat = as.numeric(Lat), Long = as.numeric(Long),
+    Logo_url = logo_url
+  )
+
+# Load custom functions
+"src" |> list.files(full.names = T) |> walk(source)
+
+# .gpx files
+# https://medium.com/@mark.reuter/parsing-gps-gpx-files-with-r-21ea0a694da8
+routes <- list.files("data/gpx", recursive = T, full.names = T)
+
+gpx <- list()
+for (i in 1:length(routes)) {
+  # cat(paste0(routes[i], "  "))
+  gpx[[i]] <- xml2::read_html(routes[i]) %>% # Parse
+    xml2::xml_find_all("//trkpt") %>% # The lat and long data
+    xml2::xml_attrs() %>% bind_rows() %>%
+    mutate(route = i)
+}
+gpxdf <- bind_rows(gpx) %>%
+  mutate(lat = as.numeric(lat), lon = as.numeric(lon))
 ```
+
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Kartta (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)` puistoista käyty)
+
+```{r}
+# Visited icons
+visited <- data %>% filter(Visit == "Joo")
+visited_icons <- icons(
+  iconUrl = visited$Logo_url,
+  iconWidth = 40, iconHeight = 30,
+  iconAnchorX = 0, iconAnchorY = 0
+)
+
+# Not yet
+notyet <- data %>% filter(Visit != "Joo")
+notyet_icons <- icons(
+  iconUrl = "help-circle.svg",
+  iconWidth = 20, iconHeight = 20,
+  iconAnchorX = 0, iconAnchorY = 0
+)
+
+
+# Simple pins
+# visited_icons <- icons(
+#   iconUrl = "pin.png",
+#   iconWidth = 30, iconHeight = 30,
+#   iconAnchorX = 0, iconAnchorY = 0
+# )
+
+
+# Plot
+basemap <- data %>%
+  leaflet() %>%
+  addTiles() %>%
+  # addMarkers(
+  #   data = visited, ~Long, ~Lat,
+  #   label = paste0(visited$Park_short, "\n", visited$Dates),
+  #   icon = visited_icons
+  # ) %>%
+  # addMarkers(
+  #   data = notyet, ~Long, ~Lat,
+  #   label = notyet$Park_short,
+  #   icon = notyet_icons
+  # )
+    
+  addMarkers(
+    data = visited, ~Long, ~Lat,
+    label = paste0(visited$Park_short, "\n", visited$Dates),
+    icon = visited_icons
+  ) %>%
+  addMarkers(
+    data = notyet, ~Long, ~Lat,
+    label = notyet$Park_short,
+    icon = notyet_icons
+  )
+
+# Add gpx routes
+for (i in 1:length(routes)) {
+  basemap <- basemap %>%
+    addPolylines(
+      data = gpxdf %>% filter(route == i),
+      lat = ~lat,
+      lng = ~lon,
+      color = "#FF4500",
+      opacity = .9,
+      weight = 3
+    )
+}
+basemap
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Vieraillut puistot vuosittain
+
+```{r}
+# Only novel parks (first visits)
+data_first_visits <- data %>%
+  drop_na(Dates) %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  group_by(Park) %>% reframe(Year = as.numeric(min(Year))) %>%
+  group_by(Year) %>% reframe(n = n()) %>%
+  # Fill in missing rows with 0 visits
+  complete(Year = seq(min(Year), max(Year), by = 1), fill = list(n = 0)) %>%
+  mutate(cumsum = cumsum(n))
+
+# Visits by year
+data %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  mutate(Month = as.numeric(Month), Year = as.numeric(Year)) %>%
+  drop_na(Year) %>%
+  group_by(Year) %>% mutate(visit_order = row_number(Month)-.5) %>%
+  ggplot(aes(x = Year)) +
+  geom_bar(fill = "deepskyblue4") +
+  # geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
+  ggimage::geom_image(
+    aes(y = visit_order, image = Logo_url),
+    size = 0.12
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(2010, 2100, by = 1)) +
+  scale_y_continuous(breaks = seq(1, 30, by = 1)) +
+  ylab("Käydyt puistot") + xlab("Vuosi")
+```
+
+### Käynnit vuodenajan mukaan
+
+```{r}
+data %>%
+  mutate(Dates = strsplit(Dates, ", ")) %>%
+  unnest(Dates) %>%
+  tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+  mutate(Month = as.numeric(Month), Year = as.numeric(Year)) %>%
+  drop_na(Year) %>%
+  group_by(Year) %>% mutate(visit_order = row_number(Month)-.5) %>%
+  ggplot(aes(y = reorder(Month, desc(Month)), x = Year)) +
+  # geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
+  ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = position_dodge(-.8)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_discrete(breaks = c(1:12), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  scale_x_continuous(breaks = c(2010:2100)) +
+  ylab("Kuukausi") + xlab("Vuosi")
+
+
+
+```
+
