@@ -1,14 +1,14 @@
 # Theme
-font <- "sans"#"Open Sans"
+# font <- "sans"#"Open Sans"
 theme_nice <- function () {
-  theme_minimal(base_family = font) +
+  theme_minimal() + #base_family = font
     theme(
       panel.grid.major = element_line(color = "gray90", linetype = "dotted", linewidth = .3),
       panel.grid.minor = element_blank(),
       axis.text = element_text(color = 1),
-      plot.title = element_text(family = font, face = "bold"),
-      axis.title = element_text(family = font),
-      strip.text = element_text(family = font, face = "bold", size = rel(.8), hjust = 0),
+      plot.title = element_text(face = "bold"),#family = font, 
+      axis.title = element_text(), #family = font
+      strip.text = element_text(face = "bold", size = rel(.8), hjust = 0),# family = font
       strip.background = element_rect(fill = "grey80", color = NA)
     )
 }

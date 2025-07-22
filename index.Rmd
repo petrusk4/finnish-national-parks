@@ -9,14 +9,14 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-pacman::p_load(tidyverse, sp, leaflet, flexdashboard)
+pacman::p_load(tidyverse, sp, leaflet, flexdashboard, plotly)
 
 
 # Get data
 data <- openxlsx::read.xlsx("data/parks.xlsx")
 
 # Logos
-logo_url <- list.files("logos", full.names = T)
+logo_url <- list.files("logos", full.names = T, recursive = T)
 
 # Split coordinate column
 data <- data %>%
@@ -51,14 +51,14 @@ gpxdf <- bind_rows(gpx) %>%
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Kartta (`r nrow(data %>% filter(Visit == "Joo"))` / `r nrow(data)` puistoista käyty)
+### Kartta (`r nrow(data %>% filter(Country == "Finland" & Visit == "Joo"))` / `r nrow(data %>% filter(Country == "Finland"))` Suomen puistoista käyty)
 
 ```{r}
 # Visited icons
 visited <- data %>% filter(Visit == "Joo")
 visited_icons <- icons(
   iconUrl = visited$Logo_url,
-  iconWidth = 40, iconHeight = 30,
+  iconWidth = 60, iconHeight = NA,
   iconAnchorX = 0, iconAnchorY = 0
 )
 
@@ -66,7 +66,7 @@ visited_icons <- icons(
 notyet <- data %>% filter(Visit != "Joo")
 notyet_icons <- icons(
   iconUrl = "help-circle.svg",
-  iconWidth = 20, iconHeight = 20,
+  iconWidth = 30, iconHeight = 30,
   iconAnchorX = 0, iconAnchorY = 0
 )
 
@@ -147,7 +147,7 @@ data %>%
   drop_na(Year) %>%
   group_by(Year) %>% mutate(visit_order = row_number(Month)-.5) %>%
   ggplot(aes(x = Year)) +
-  geom_bar(fill = "deepskyblue4") +
+  geom_bar(fill = "darkolivegreen") +
   # geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
   ggimage::geom_image(
     aes(y = visit_order, image = Logo_url),
@@ -159,25 +159,68 @@ data %>%
   ylab("Käydyt puistot") + xlab("Vuosi")
 ```
 
+
 ### Käynnit vuodenajan mukaan
 
 ```{r}
-data %>%
+# data %>%
+#   mutate(Dates = strsplit(Dates, ", ")) %>%
+#   unnest(Dates) %>%
+#   tidyr::separate(Dates, c("Month", "Year"), "/") %>%
+#   mutate(Month = as.numeric(Month), Year = as.numeric(Year)) %>%
+#   complete(Month = 1:12) %>%
+#   drop_na(Year) %>%
+#   group_by(Year) %>% mutate(visit_order = row_number(Month)-.5) %>%
+#   ggplot(aes(y = reorder(Month, desc(Month)), x = Year)) +
+#   
+#   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = Inf, ymax = 8.5), fill = "#ebf7ff") +
+#   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 7.5), fill = "#dafff5") +
+#   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 7.5, ymax = 4.5), fill = "#e7ffda") +
+#   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 4.5, ymax = 1.5), fill = "#ffdec8") +
+#   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 1.5, ymax = -Inf), fill = "#ebf7ff") +
+# 
+#   # geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
+#   ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = position_dodge(-1)) +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#   scale_y_discrete(breaks = c(1:12), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+#   scale_x_continuous(breaks = c(2010:2100)) +
+#   ylab("Kuukausi") + xlab("Vuosi")
+
+
+
+options(scipen = 999)
+p1 <- data %>%
   mutate(Dates = strsplit(Dates, ", ")) %>%
   unnest(Dates) %>%
   tidyr::separate(Dates, c("Month", "Year"), "/") %>%
   mutate(Month = as.numeric(Month), Year = as.numeric(Year)) %>%
   drop_na(Year) %>%
-  group_by(Year) %>% mutate(visit_order = row_number(Month)-.5) %>%
-  ggplot(aes(y = reorder(Month, desc(Month)), x = Year)) +
-  # geom_col(data = data_first_visits, aes(x = Year, y = n, fill = "Ensimmäinen visiitti")) +
-  ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = position_dodge(-.8)) +
+  # group_by(Year, Month) %>%
+  # arrange(desc(Month), desc(Logo_url)) %>% ungroup() %>%
+  ggplot(aes(group = Park, y = Month, x = Year)) +
+  
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 2.5), fill = "#ebf7ff") +
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 2.5, ymax = 5.5), fill = "#dafff5") +
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 5.5, ymax = 8.5), fill = "#e7ffda") +
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 11.5), fill = "#ffdec8") +
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 11.5, ymax = Inf), fill = "#ebf7ff") +
+  # geom_point(size = 3, position = ggstance::position_dodgev(height = 1)) +
+  geom_jitter(aes(size = Area, color = Visitors_2023)) +
+
+  # ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = ggstance::position_dodgev(height = 1)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_y_discrete(breaks = c(1:12), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  scale_y_continuous(limits = c(1, 12), breaks = c(1:12), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
   scale_x_continuous(breaks = c(2010:2100)) +
+  scale_colour_gradientn(name = "Vierailijoita\nvuonna 2023", colors = rev(c("#67001f", "#b2182b", "#d6604d", "#f4a582"))) +
   ylab("Kuukausi") + xlab("Vuosi")
 
+ggplotly(p1)
 
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = Inf, ymax = 8.5), fill = "#ebf7ff") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 7.5), fill = "#dafff5") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 7.5, ymax = 4.5), fill = "#e7ffda") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 4.5, ymax = 1.5), fill = "#ffdec8") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 1.5, ymax = -Inf), fill = "#ebf7ff") +
 
 ```
 
