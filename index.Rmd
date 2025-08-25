@@ -189,7 +189,7 @@ data %>%
 
 
 options(scipen = 999)
-p1 <- data %>%
+data %>%
   mutate(Dates = strsplit(Dates, ", ")) %>%
   unnest(Dates) %>%
   tidyr::separate(Dates, c("Month", "Year"), "/") %>%
@@ -205,16 +205,15 @@ p1 <- data %>%
   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 11.5), fill = "#ffdec8") +
   geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 11.5, ymax = Inf), fill = "#ebf7ff") +
   # geom_point(size = 3, position = ggstance::position_dodgev(height = 1)) +
-  geom_jitter(aes(size = Area, color = Visitors_2023)) +
+  # geom_jitter(aes(size = Area, color = Area)) +
 
-  # ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = ggstance::position_dodgev(height = 1)) +
+  ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = ggstance::position_dodgev(height = 1)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   scale_y_continuous(limits = c(1, 12), breaks = c(1:12), labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
   scale_x_continuous(breaks = c(2010:2100)) +
-  scale_colour_gradientn(name = "Vierailijoita\nvuonna 2023", colors = rev(c("#67001f", "#b2182b", "#d6604d", "#f4a582"))) +
+  scale_colour_gradientn(name = "Pinta-ala", colors = rev(c("#67001f", "#b2182b", "#d6604d", "#f4a582"))) +
   ylab("Kuukausi") + xlab("Vuosi")
 
-ggplotly(p1)
 
   # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = Inf, ymax = 8.5), fill = "#ebf7ff") +
   # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 7.5), fill = "#dafff5") +
