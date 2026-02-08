@@ -197,23 +197,29 @@ data %>%
   drop_na(Year) %>%
   # group_by(Year, Month) %>%
   # arrange(desc(Month), desc(Logo_url)) %>% ungroup() %>%
-  ggplot(aes(group = Park, y = Month, x = Year)) +
+  ggplot(aes(group = Park, x = Month, y = Year)) +
   
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 2.5), fill = "#ebf7ff") +
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 2.5, ymax = 5.5), fill = "#dafff5") +
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 5.5, ymax = 8.5), fill = "#e7ffda") +
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 11.5), fill = "#ffdec8") +
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 11.5, ymax = Inf), fill = "#ebf7ff") +
-  # geom_point(size = 3, position = ggstance::position_dodgev(height = 1)) +
+  geom_linerange(aes(y = Inf, xmin = -Inf, xmax = 2.5), color = "cyan", linewidth = 2) +
+  geom_linerange(aes(y = Inf, xmin = 2.5, xmax = 5.5), color = "gold", linewidth = 2) +
+  geom_linerange(aes(y = Inf, xmin = 5.5, xmax = 8.5), color = "chartreuse3", linewidth = 2) +
+  geom_linerange(aes(y = Inf, xmin = 8.5, xmax = 11.5), color = "darkorange3", linewidth = 2) +
+  geom_linerange(aes(y = Inf, xmin = 11.5, xmax = Inf), color = "cyan", linewidth = 2) +
+  
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = 2.5), fill = "#ebf7ff") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 2.5, ymax = 5.5), fill = "#dafff5") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 5.5, ymax = 8.5), fill = "#e7ffda") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 8.5, ymax = 11.5), fill = "#ffdec8") +
+  # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 11.5, ymax = Inf), fill = "#ebf7ff") +
+  # geom_point( = 3, position = ggstance::position_dodgev(height = 1)) +
   # geom_jitter(aes(size = Area, color = Area)) +
 
-  ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = ggstance::position_dodgev(height = 1)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_y_continuous(breaks = c(1:12), expand = expansion(mult = c(.1, .1))) +
-  scale_x_continuous(breaks = c(2010:2100)) +
-  coord_cartesian(ylim = c(1, 12)) +
+  ggimage::geom_image(aes(image = Logo_url), size = 0.12, position = position_dodge(width = 1)) +
+  # theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = c(1:12), expand = expansion(mult = c(.1, .1))) +
+  scale_y_reverse(breaks = c(2010:2100)) +
+  coord_cartesian(xlim = c(1, 12)) +
   # scale_colour_gradientn(name = "Pinta-ala", colors = rev(c("#67001f", "#b2182b", "#d6604d", "#f4a582"))) +
-  ylab("Kuukausi") + xlab("Vuosi")
+  xlab("Kuukausi") + ylab("Vuosi")
 
 
   # geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = Inf, ymax = 8.5), fill = "#ebf7ff") +
